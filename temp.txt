@@ -50,3 +50,42 @@ for i in range(3):
 
 prs.save("testing.pptx")
 print("Presentation saved as 'testing.pptx'")
+
+
+
+
+
+
+
+def remaining_level(slide, remaining_employees, employee_coor):
+    
+    
+    for id, coor in employee_coor.items():
+        
+        if id in remaining_employees: # Check if the id has any subordinates
+            
+            '''
+            shape.left → X-coordinate (distance from the left of the slide)
+            shape.top → Y-coordinate (distance from the top of the slide)
+            shape.width → Width of the shape
+            shape.height → Height of the shape
+            '''
+            
+            # Coordinates on the current level
+            left_coor = coor.left
+            top_coor = coor.top
+            width_coor = coor.width
+            height_coor = coor.height
+            
+            num_subordinate = len(remaining_employees[id])
+            
+            for i in num_subordinate:
+                
+                # Figure out the coordination
+                new_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
+                
+                
+            
+          
+    return 0
+
