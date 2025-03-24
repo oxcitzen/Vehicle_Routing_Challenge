@@ -1,0 +1,52 @@
+import pandas as pd
+from pptx import Presentation
+from pptx.util import Inches
+from pptx.dml.color import RGBColor
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.oxml import parse_xml
+from pptx.oxml.ns import nsdecls
+from pptx.util import Pt
+import sys
+from pptx.enum.shapes import MSO_CONNECTOR
+
+prs = Presentation()
+slide = prs.slides.add_slide(prs.slide_layouts[6])  
+
+slide_width = prs.slide_width
+
+left = (slide_width - Inches(1.5)) / 2  # Center horizontally
+
+shape_1 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(1), Inches(1.5), Inches(0.8))
+shape_1.fill.solid()
+shape_1.fill.fore_color.rgb = RGBColor(10, 80, 110)  # Dark blue
+
+offset_x = shape_1.left + Inches(0.1)  # Fixed X offset for vertical lines
+start_y = shape_1.top  # Start from the bottom of shape_1
+gap = 0.5 * shape_1.height  # Vertical gap between levels
+x_offset_h = shape_1.width / 4  # Horizontal line offset
+
+# Loop to draw horizontal and vertical lines for each person
+for i in range(3):
+    y_pos = start_y + (1 + i * 0.5) * shape_1.height  # Compute vertical position
+
+    # Vertical line extending downward
+    v_line = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        int(offset_x), int(y_pos),
+        int(offset_x), int(y_pos + gap)
+    )
+
+    # Horizontal line extending rightward
+    h_line = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        int(offset_x), int(y_pos + gap),
+        int(offset_x + x_offset_h), int(y_pos + gap)
+    )
+    
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(offset_x + x_offset_h), int(y_pos + gap / 2 + Inches(0.05)), Inches(1), Inches(0.3))
+    shape.fill.solid()
+    shape.fill.fore_color.rgb = RGBColor(10, 80, 110)  # Dark blue
+
+
+prs.save("testing.pptx")
+print("Presentation saved as 'testing.pptx'")
