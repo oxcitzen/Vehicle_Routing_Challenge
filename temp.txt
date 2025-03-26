@@ -9,83 +9,164 @@ from pptx.util import Pt
 import sys
 from pptx.enum.shapes import MSO_CONNECTOR
 
-prs = Presentation()
-slide = prs.slides.add_slide(prs.slide_layouts[6])  
-
-slide_width = prs.slide_width
-
-left = (slide_width - Inches(1.5)) / 2  # Center horizontally
-
-shape_1 = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(1), Inches(1.5), Inches(0.8))
-shape_1.fill.solid()
-shape_1.fill.fore_color.rgb = RGBColor(10, 80, 110)  # Dark blue
-
-offset_x = shape_1.left + Inches(0.1)  # Fixed X offset for vertical lines
-start_y = shape_1.top  # Start from the bottom of shape_1
-gap = 0.5 * shape_1.height  # Vertical gap between levels
-x_offset_h = shape_1.width / 4  # Horizontal line offset
-
-# Loop to draw horizontal and vertical lines for each person
-for i in range(3):
-    y_pos = start_y + (1 + i * 0.5) * shape_1.height  # Compute vertical position
-
-    # Vertical line extending downward
-    v_line = slide.shapes.add_connector(
-        MSO_CONNECTOR.STRAIGHT,
-        int(offset_x), int(y_pos),
-        int(offset_x), int(y_pos + gap)
-    )
-
-    # Horizontal line extending rightward
-    h_line = slide.shapes.add_connector(
-        MSO_CONNECTOR.STRAIGHT,
-        int(offset_x), int(y_pos + gap),
-        int(offset_x + x_offset_h), int(y_pos + gap)
-    )
+def add_rectangle_root(slide, left, top, width, height, text):
+    """Adds a rectangle with text at the specified position."""
     
-    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, int(offset_x + x_offset_h), int(y_pos + gap / 2 + Inches(0.05)), Inches(1), Inches(0.3))
+    '''
+    left -	X-coordinate (distance from the left side of the slide) 
+    top	 -  Y-coordinate (distance from the top of the slide) 
+    width -	Width of the shape 
+    height -  Height of the shape 
+    '''
+    
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
     shape.fill.solid()
     shape.fill.fore_color.rgb = RGBColor(10, 80, 110)  # Dark blue
+    shape.text_frame.text = text
+    shape.text_frame.paragraphs[0].font.size = Pt(16)
+    shape.text_frame.paragraphs[1].font.size = Pt(16)
+    shape.text_frame.paragraphs[0].font.bold = True
+    shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
+    return shape
 
 
-prs.save("testing.pptx")
-print("Presentation saved as 'testing.pptx'")
+def add_rectangle_level2(slide, level_2_list, root_left, root_top, root_width, root_height, slide_width):
+    """Adds Level 2 rectangles evenly below the root employee."""
 
+    num_employees = len(level_2_list)
+    shape_width = Inches(1)
+    shape_height = Inches(0.6)
 
-
-
-
-
-
-def remaining_level(slide, remaining_employees, employee_coor):
+    # Vertical positioning (below the root shape)
+    level2_top = root_top + root_height + Inches(0.5)  # Some space below the root
     
+    middle_x = root_left + root_width / 2
+    middle_y = (root_top + root_height + level2_top) / 2
+    root_bottom = root_top + root_height
+
+    '''
+    # Testing coordinates with two circle
+    c1 = slide.shapes.add_shape(MSO_SHAPE.OVAL, middle_x, root_bottom, Inches(0.05), Inches(0.05))
+    c2 = slide.shapes.add_shape(MSO_SHAPE.OVAL, middle_x, middle_y, Inches(0.05), Inches(0.05))
+    c1.fill.solid()
+    c1.fill.fore_color.rgb = RGBColor(0, 0, 0)  # Black circle
+    c2.fill.solid()
+    c2.fill.fore_color.rgb = RGBColor(0, 0, 0)  # Black circle
+    '''
     
-    for id, coor in employee_coor.items():
+    # This is how you add a line
+    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, int(middle_x), int(root_bottom), int(middle_x), int(middle_y))
+
+    
+    # Horizontal positioning
+    total_width = slide_width - Inches(1)  # Leave margins
+    start_x = (slide_width - total_width) / 2  # Centering
+    spacing = total_width / (num_employees + 1)  # Even spacing
+
+    level2_info = {}
+    level2_x_corr = []
+
+    for i, employee in enumerate(level_2_list):
+        left = start_x + (i + 1) * spacing - shape_width / 2  # Centered horizontally
+        x_center = int(left + shape_width / 2)
+        text = f"{employee['Department']}\n{employee['Name']}"
+
+        shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, level2_top, shape_width, shape_height)
+        #shape.text_frame.auto_size = None 
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = RGBColor(10, 80, 110)  # Dark blue
+        shape.text_frame.text = text
+        shape.text_frame.paragraphs[0].font.size = Pt(12)
+        shape.text_frame.paragraphs[1].font.size = Pt(12)
+        shape.text_frame.paragraphs[0].font.bold = True
+        shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # White text
         
-        if id in remaining_employees: # Check if the id has any subordinates
+        # Add vertical line
+        slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, x_center, int(level2_top), x_center, int(middle_y))
+        level2_x_corr.append(int(x_center))
+
+        # Store the coordinates of the level 2 employee
+        level2_info[employee['Employee ID']] = shape
+    
+    # Add horizontal line
+    slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, min(level2_x_corr), int(middle_y), max(level2_x_corr), int(middle_y))
+        
+
+    return level2_info
+
+
+
+# Stack approach
+def remaining_level(slide, remaining_employees, employee_coor):
+    """
+    Iteratively processes remaining employees, adding them to the hierarchy 
+    while avoiding dictionary modification errors by using a stack.
+    """
+    
+    stack = list(employee_coor.items())  # Initialize stack with current employees
+    
+    while stack:
+        id, coor = stack.pop()  # Process the last added employee
+        
+        # If the employee has subordinates
+        if id in remaining_employees:  
             
-            '''
-            shape.left → X-coordinate (distance from the left of the slide)
-            shape.top → Y-coordinate (distance from the top of the slide)
-            shape.width → Width of the shape
-            shape.height → Height of the shape
-            '''
-            
-            # Coordinates on the current level
-            left_coor = coor.left
-            top_coor = coor.top
-            width_coor = coor.width
-            height_coor = coor.height
+            offset_x = coor.left + Inches(0.1) # Fixed X offset for vertical lines
+            start_y = coor.top # Start from the bottom of shape_1
+            x_offset_h = coor.width / 4 # Horizontal line offset
             
             num_subordinate = len(remaining_employees[id])
+
+            for i in range(num_subordinate):
+                
+                subordinate = remaining_employees[id][i]
+                
+                if subordinate['Level'] == 3:
+                    y_pos = start_y + (1 + i * 0.5) * coor.height  # Compute vertical position
+                    gap = 0.5 * coor.height # Vertical gap between levels
+                    
+                else:
+                    y_pos = start_y + (1 + i * 1.2) * coor.height # Compute vertical position
+                    gap = 1.2 * coor.height # Vertical gap between levels
+                    
+                # Vertical line extending downward
+                slide.shapes.add_connector(
+                    MSO_CONNECTOR.STRAIGHT,
+                    int(offset_x), int(y_pos),
+                    int(offset_x), int(y_pos + gap)   
+                )
+
+                # Horizontal line extending rightward
+                slide.shapes.add_connector(
+                    MSO_CONNECTOR.STRAIGHT,
+                    int(offset_x), int(y_pos + gap),
+                    int(offset_x + x_offset_h), int(y_pos + gap)
+                )
+
+                # Add rectangle (subordinate)
+                shape = slide.shapes.add_shape(
+                    MSO_SHAPE.RECTANGLE,
+                    int(offset_x + x_offset_h),
+                    int(y_pos + gap / 2 + Inches(0.05)),
+                    Inches(0.8),
+                    Inches(0.4)   
+                )
+                
+                shape.fill.solid()
+                shape.fill.fore_color.rgb = RGBColor(10, 80, 110)
+                text = f"{subordinate['Department']}\n{subordinate['Name']}"
+                shape.text_frame.text = text
+                shape.text_frame.paragraphs[0].font.size = Pt(10)
+                shape.text_frame.paragraphs[1].font.size = Pt(10)
+                shape.text_frame.paragraphs[0].font.bold = True
+                shape.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
+
+                # Store subordinate position & push to stack for further processing
+                employee_coor[subordinate["Employee ID"]] = shape
+                stack.append((subordinate["Employee ID"], shape))  # Add new element to stack
+
+            # Remove processed employee from `remaining_employees`
+            remaining_employees.pop(id, None)
             
-            for i in num_subordinate:
-                
-                # Figure out the coordination
-                new_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
-                
-                
-            
-          
-    return 0
+    print("The PPT automation is complete.")
 
