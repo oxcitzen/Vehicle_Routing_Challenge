@@ -170,3 +170,58 @@ def remaining_level(slide, remaining_employees, employee_coor):
             
     print("The PPT automation is complete.")
 
+
+
+
+
+
+
+prs = Presentation()
+slide = prs.slides.add_slide(prs.slide_layouts[5])  
+
+# Slide width
+slide_width = prs.slide_width
+
+# Root shape dimensions
+shape_width = Inches(1.5)
+shape_height = Inches(0.8)
+
+
+left = (slide_width - shape_width) / 2  # Center horizontally
+top = Inches(1)  # Leave space for title
+
+
+root_text = f"{str(root.loc[0, 'Department'])  }\n{root.loc[0, 'Name']}"
+root_shape = add_rectangle_root(slide, left, top, shape_width, shape_height, root_text)
+
+if len(two_level_heirarchy_dict) == 0:
+    # if no subordinates
+    prs.save("top_center_shape.pptx")
+    print("Presentation saved as 'top_center_shape.pptx'")
+    sys.exit()
+else:
+    level_2_employees = next(iter(two_level_heirarchy_dict.values()))
+
+
+'''
+level_2_employees = [
+    {'Employee ID': 4, 'Supervisor ID': 2, 'Name': 'David', 'Department': 'Finance'},
+    {'Employee ID': 5, 'Supervisor ID': 2, 'Name': 'Eve', 'Department': 'Finance'},
+    {'Employee ID': 5, 'Supervisor ID': 2, 'Name': 'Eve', 'Department': 'Finance'}
+]
+'''
+
+# Add Level 2 rectangles
+level2_coor = add_rectangle_level2(slide, level_2_employees, left, top, shape_width, shape_height, slide_width)
+
+heirarchy_dict_copy = two_level_heirarchy_dict.copy()
+
+heirarchy_dict_copy.pop(next(iter(two_level_heirarchy_dict)))
+
+remaining_level(slide, heirarchy_dict_copy, level2_coor)
+
+
+# Save presentation
+prs.save("top_center_shape.pptx")
+print("Presentation saved as 'top_center_shape.pptx'")
+
